@@ -1,6 +1,6 @@
 # fun-ai-project
 
-Small playground for experimenting with LangChain, Google Generative AI, and Streamlit-based demos.
+Small playground for experimenting with LangChain, Google Generative AI, and Streamlit-based demos..
 
 ## Structure
 
