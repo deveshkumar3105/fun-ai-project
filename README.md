@@ -1,4 +1,4 @@
-# fun-ai-proj
+# fun-ai-project
 
 Small playground for experimenting with LangChain, Google Generative AI, and Streamlit-based demos.
 
