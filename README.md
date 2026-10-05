@@ -46,6 +46,7 @@ Current examples include:
 - `3_memory_management.ipynb`
 - `4_structured_output.ipynb`
 - `5_ollama_app.ipynb`
+- `7_streaming_response.ipynb`
 
 ## Notes
 
