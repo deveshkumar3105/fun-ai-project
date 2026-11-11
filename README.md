@@ -19,6 +19,8 @@ This repository is designed for exploring:
 - `apps/` — runnable AI demos and mini apps
   - `apps/1_qna_chatbot.py` — simple Streamlit Q&A chatbot using Google Generative AI
   - `apps/2_google_agent.py` — research assistant that decides when to search and answers with Groq + Google Search results
+  - `apps/3_qna_chatbot_w_google_search.py` — streaming Streamlit chatbot with Google Search via Serper
+  - `apps/4_sql_agent.py` — Streamlit task manager that uses a SQLite database and a Groq-backed SQL agent
 - `notebooks/` — experiment notebooks covering multiple AI topics
   - `1_langcain_chatbot.ipynb`
   - `2_prompt_engg.ipynb`
@@ -101,6 +103,31 @@ This script runs an interactive terminal-based assistant that:
 - uses Serper to fetch current search results
 - sends those results to Groq-backed LLM to generate an answer
 - supports `quit` or `exit` to leave the session
+
+### Search chatbot
+
+```bash
+streamlit run apps/3_qna_chatbot_w_google_search.py
+```
+
+This app combines a Groq model with Google Search results from Serper.
+
+### SQL task manager
+
+```bash
+streamlit run apps/4_sql_agent.py
+```
+
+The app creates `my_tasks.db` in the directory where Streamlit is launched and creates a `tasks` table if one does not already exist. Tasks have a title, optional description, status (`pending`, `in_progress`, or `completed`), and creation timestamp. The SQL agent is instructed to list at most 10 tasks and verify create, update, and delete operations with a follow-up query.
+
+The existing table is not altered when the app runs. If you change its schema, migrate or recreate the SQLite database as needed.
+
+## Repository status
+
+- Current branch: `main`
+- Latest commit at the time of this update: `a158dc4` (`SQL DB Handler Agent`)
+- Working tree was clean when checked.
+- The project includes four runnable apps and nine exploratory notebooks.
 
 ## Notebook coverage
 
