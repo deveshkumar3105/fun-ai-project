@@ -9,3 +9,4 @@ langchain-ollama
 langchain-groq
 langchain-community
 rich
+langgraph
