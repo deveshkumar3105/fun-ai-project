@@ -5,6 +5,18 @@ from datetime import date
 from dotenv import load_dotenv
 from langchain_community.utilities import GoogleSerperAPIWrapper
 from langchain_groq import ChatGroq
+from langgraph.checkpoint.memory import MemorySaver
+
+from typing import TypedDict, Annotated
+from langchain_core.messages import (
+    AnyMessage,
+    HumanMessage,
+    AIMessage,
+    SystemMessage
+)
+from langgraph.graph import StateGraph, START, END
+from langgraph.graph.message import add_messages
+
 
 from rich.console import Console
 from rich.markdown import Markdown
@@ -23,6 +35,8 @@ if not os.getenv("GROQ_API_KEY"):
 if not os.getenv("SERPER_API_KEY"):
     raise ValueError("SERPER_API_KEY missing from .env")
 
+
+checkpointer = MemorySaver()
 
 # ----------------------------------
 # 2. Initialize Components
@@ -171,6 +185,133 @@ console.print(
     )
 )
 
+
+# ----------------------------------
+# 6. LangGraph State
+# ----------------------------------
+
+class ResearchState(TypedDict):
+    messages: Annotated[list[AnyMessage], add_messages]
+    route: str
+
+
+# ----------------------------------
+# 7. Router Node
+# ----------------------------------
+
+def router_node(state: ResearchState):
+
+    query = next(
+        msg.content for msg in reversed(state["messages"])
+        if isinstance(msg, HumanMessage)
+    )
+
+    decision = should_search(query)
+
+    return {
+        "route": "search" if decision else "no_search"
+    }
+
+
+# ----------------------------------
+# 8. Search Node
+# ----------------------------------
+
+def search_node(state: ResearchState):
+
+    query = next(
+        msg.content for msg in reversed(state["messages"])
+        if isinstance(msg, HumanMessage)
+    )
+
+    console.print("[dim cyan]🔎 Searching Google...[/dim cyan]")
+
+    search_results = search.run(query)
+
+    console.print(
+        Panel(
+            search_results,
+            title="🔎 Google Search Results",
+            border_style="yellow"
+        )
+    )
+
+    messages = [
+        SystemMessage(content="""
+            You are a research assistant.
+            Google Search results are your primary source of truth.
+            Never invent facts, dates or statistics.
+            If results are insufficient or contradictory, say so.
+            Format answers using Markdown.
+        """),
+        *state["messages"],
+        HumanMessage(content=f"""
+            Google Search results:
+            {search_results}
+
+            Answer the original user question using these results.
+        """)
+    ]
+
+    response = llm.invoke(messages)
+
+    return {
+        "messages": [AIMessage(content=response.content)]
+    }
+
+
+# ----------------------------------
+# 9. No Search Node
+# ----------------------------------
+
+def no_search_node(state: ResearchState):
+
+    console.print(
+        "[dim yellow]⚡ Using model knowledge...[/dim yellow]"
+    )
+
+    messages = [
+        SystemMessage(content="""
+            You are a helpful AI research assistant.
+            Answer accurately and format responses using Markdown.
+        """),
+        *state["messages"]
+    ]
+
+    response = llm.invoke(messages)
+
+    return {
+        "messages": [AIMessage(content=response.content)]
+    }
+
+
+# ----------------------------------
+# 10. Build LangGraph
+# ----------------------------------
+
+workflow = StateGraph(ResearchState)
+
+workflow.add_node("router", router_node)
+workflow.add_node("search", search_node)
+workflow.add_node("no_search", no_search_node)
+
+workflow.add_edge(START, "router")
+
+workflow.add_conditional_edges(
+    "router",
+    lambda state: state["route"],
+    {
+        "search": "search",
+        "no_search": "no_search"
+    }
+)
+
+workflow.add_edge("search", END)
+workflow.add_edge("no_search", END)
+
+agent = workflow.compile(checkpointer=checkpointer)
+
+
 while True:
 
     try:
@@ -197,14 +338,29 @@ while True:
         if not query:
             continue
 
-        # Decide whether to search
-        if should_search(query):
+        # # Decide whether to search
+        # if should_search(query):
 
-            final_text = answer_with_search(query)
+        #     final_text = answer_with_search(query)
 
-        else:
+        # else:
 
-            final_text = answer_without_search(query)
+        #     final_text = answer_without_search(query)
+
+        response = agent.invoke(
+        {
+        "messages": [
+            HumanMessage(content=query)
+        ]
+        },
+        config={
+        "configurable": {
+            "thread_id": "devesh"
+            }
+        }
+        )
+
+        final_text = response["messages"][-1].content
 
         # Display AI response
         console.print(
